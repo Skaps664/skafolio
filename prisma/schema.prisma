@@ -1,0 +1,146 @@
+// Skafolio Prisma Schema - Optimized for MongoDB Atlas
+// Indexes added for fast queries on user lookups, card slugs, and analytics
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  email              String    @unique
+  passwordHash       String
+  phone              String?
+  role               String    @default("user")
+  subscriptionStatus String    @default("free")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  
+  // Virtual relations (MongoDB doesn't enforce FK constraints)
+  cardIds            String[]  @db.ObjectId
+  orderIds           String[]  @db.ObjectId
+  
+  @@index([role])
+}
+
+model Card {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @db.ObjectId
+  slug            String   @unique
+  title           String?
+  data            Json     // Complete card data: personal info, links, social, stats
+  selectedThemeId String?  @db.ObjectId
+  brandingHidden  Boolean  @default(false)
+  isPublished     Boolean  @default(false)
+  publicUrl       String?
+  qrCodeUrl       String?
+  analytics       Json?    // Cached analytics summary for quick dashboard display
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isPublished])
+  @@index([userId, isPublished])
+}
+
+model Theme {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  previewUrl  String?
+  isPremium   Boolean  @default(false)
+  price       Int?     // Price in PKR paisa (divide by 100 for display)
+  config      Json     // Theme config: colors, fonts, layout settings
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  @@index([isPremium])
+  @@index([isActive])
+}
+
+model Order {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  cardId        String?  @db.ObjectId
+  productType   String   // NFC_CARD | QR_STICKER | SUBSCRIPTION | REMAP
+  quantity      Int      @default(1)
+  material      String?  // plastic, metal, wood
+  customDesign  String?
+  paymentMethod String?  // PAYFAST | COD
+  paymentStatus String   @default("pending") // pending, paid, failed, refunded
+  shippingInfo  Json?    // address, phone, notes
+  trackingNo    String?
+  status        String   @default("pending") // pending, processing, shipped, delivered, cancelled
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([paymentStatus])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Payment {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  orderId       String?  @db.ObjectId
+  amount        Float
+  currency      String   @default("PKR")
+  gateway       String   // PAYFAST | COD
+  gatewayId     String?  // PayFast transaction ID
+  status        String   // pending, paid, failed, refunded
+  metadata      Json?    // Store PayFast response data
+  createdAt     DateTime @default(now())
+  
+  @@index([userId])
+  @@index([orderId])
+  @@index([gatewayId])
+  @@index([status])
+}
+
+model NFCRecord {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  nfcId         String   @unique // Physical NFC chip serial/UID
+  shortToken    String   @unique // Short token for /n/:token redirect
+  mappedUrl     String   // The actual card public URL
+  cardId        String?  @db.ObjectId
+  orderId       String?  @db.ObjectId
+  userId        String   @db.ObjectId
+  isActive      Boolean  @default(true)
+  remapCount    Int      @default(0)
+  lastRemapAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([cardId])
+}
+
+model CardEvent {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  cardId     String   @db.ObjectId
+  eventType  String   // view, link_click, qr_scan, share
+  metadata   Json?    // source, userAgent, linkId, etc.
+  ipHash     String?  // Hashed IP for privacy
+  timestamp  DateTime @default(now())
+  
+  @@index([cardId])
+  @@index([cardId, eventType])
+  @@index([cardId, timestamp])
+  @@index([timestamp])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([expiresAt])
+}
