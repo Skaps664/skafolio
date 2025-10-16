@@ -12,9 +12,10 @@ import prisma from '@/lib/prisma';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const user = await getUserFromRequest(req);
     
     if (!user) {

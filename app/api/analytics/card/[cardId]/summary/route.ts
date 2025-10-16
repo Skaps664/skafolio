@@ -9,9 +9,10 @@ import prisma from '@/lib/prisma';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { cardId: string } }
+  context: { params: Promise<{ cardId: string }> }
 ) {
   try {
+    const params = await context.params;
     const user = await getUserFromRequest(req);
     
     if (!user) {

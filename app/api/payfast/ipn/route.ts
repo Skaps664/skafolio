@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       data: {
         status: ipnData.payment_status === 'COMPLETE' ? 'paid' : 'failed',
         gatewayId: ipnData.pf_payment_id,
-        metadata: ipnData,
+        metadata: ipnData as any,
       },
     });
     

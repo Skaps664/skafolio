@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       itemName: `${order.productType} x ${order.quantity}`,
       itemDescription: `Order #${order.id}`,
       userEmail: userData?.email || user.email,
-      userPhone: userData?.phone,
+      userPhone: userData?.phone || undefined,
       customData: {
         str1: user.userId,
         str2: order.id,
